@@ -64,7 +64,11 @@ var doDirect = function( index, temptk ){
 		var v = temptk[ index ];
 		console.info( protocl + '//' + hostnme + v['action'] );
 		request.post({
-			url: protocl + '//' + hostnme + v['action'], 
+			url: protocl + '//' + hostnme + v['action'],
+			headers: {
+				'X-Requested-With': 'XMLHttpRequest',
+				'Content-Type': 'application/x-www-form-urlencoded'
+			},
 			form: {
 				fileId : v['fileid'],
 				__RequestVerificationToken : v['tokens']
@@ -73,6 +77,7 @@ var doDirect = function( index, temptk ){
 			if( err ){
 				console.error( 'gagal mengambil salah satu direct link', 'index ke ', index );
 			}else{
+				//console.log(body)
 				result.push( JSON.parse( body ) );
 				doDirect( ( index + 1 ), temptk );
 			};
