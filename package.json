@@ -5,7 +5,7 @@
   "main": "kumpulbagi-parser.js",
   "preferGlobal": true,
   "bin": {
-    "kumpulbagi-parser": "./kumpulbagi-parser.js"
+    "kumpulbagi-parser": "./kumpulbagi-parser"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

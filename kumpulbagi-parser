@@ -77,7 +77,6 @@ var doDirect = function( index, temptk ){
 			if( err ){
 				console.error( 'gagal mengambil salah satu direct link', 'index ke ', index );
 			}else{
-				//console.log(body)
 				result.push( JSON.parse( body ) );
 				doDirect( ( index + 1 ), temptk );
 			};
