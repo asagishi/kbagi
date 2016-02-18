@@ -7,8 +7,6 @@
 
 **Instalasi**
 
-[![NPM](https://nodei.co/npm/kumpulbagi-parser.png?downloads=true&downloadRank=true)](https://www.npmjs.com/package/kumpulbagi-parser)
-
 ```sh
 npm install -g kumpulbagi-parser
 ```
