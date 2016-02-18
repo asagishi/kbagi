@@ -1,6 +1,6 @@
 {
   "name": "kumpulbagi-parser",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Direct Link Download untuk Setiap Halaman KumpulBagi",
   "main": "./kumpulbagi-parser",
   "preferGlobal": true,

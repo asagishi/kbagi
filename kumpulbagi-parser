@@ -2,11 +2,34 @@
 
 process.chdir( process.cwd() );
 
+var	filesys 	= require('fs'),
+	request 	= require('request'),
+	envrmnt 	= require('jsdom').env,
+	jar			= request.jar(),
+	urlpars 	= require( 'url' ),
+	getHomeUser = function(){
+		return process.env.HOME || process.env.USERPROFILE;
+	},
+	getConfigs = function(){
+		return getHomeUser() + '/.kumpulbagi-parser.json';
+	},
+	checkConfig = function(){
+		try{
+			return filesys.statSync( getConfigs() ).isFile();
+		}catch (err){
+			return false;
+		}
+	},
+	useLogonCf = undefined;
+
 var args = {
-	start	: 1,
-	end		: 10000,
-	pages	: undefined,
-	output	: undefined
+	username 	: undefined,
+	password 	: undefined,
+	start		: 1,
+	end			: 10000,
+	pages		: undefined,
+	pageo		: undefined,
+	output		: undefined
 };
 process.argv.forEach(function (val, index, array) {
 	if( String( val ).match( '--' ) && String( val ).match( '=' ) ){
@@ -20,15 +43,47 @@ process.argv.forEach(function (val, index, array) {
 				args[ 'start' ] = ( parseInt( String( val[1] ).trim() ) > 0 ? parseInt( String( val[1] ).trim() ) : args[ 'start' ] );
 			}else if( String( val[0] ).toLowerCase() == '--end' ) {
 				args[ 'end' ] = ( parseInt( String( val[1] ).trim() ) > 0 ? parseInt( String( val[1] ).trim() ) : args[ 'end' ] );
+			}else if( String( val[0] ).toLowerCase() == '--username' ) {
+				args[ 'username' ] = String( val[1] ).trim();
+			}else if( String( val[0] ).toLowerCase() == '--password' ) {
+				args[ 'password' ] = String( val[1] ).trim();
+			}else if( String( val[0] ).toLowerCase() == '--debug' ) {
+				request.debug = true;
 			};
 		};
 	};
 });
 
+if( args['username'] != undefined && args['password'] != undefined ) {
+	filesys.writeFileSync( getConfigs(), JSON.stringify({
+		UserName : args['username'],
+		Password : args['password']
+	}));
+	console.log();
+	console.log( 'Hallo @' + args['username'] );
+	console.log( 'Konfigurasi akun kumpulbagi maneh berhasil tersimpan :-)' );
+	process.exit(1);
+};
+
 if( args['pages'] == undefined || args['output'] == undefined ) {
+	console.log();
 	console.log( 'Parameter --url atau --output tidak ditemukan!' );
 	process.exit(1);
 };
+
+if( !checkConfig() ) {
+	console.log();
+	console.log( 'Konfigurasi user KumpulBagi tidak ditemukan!' );
+	console.log( 'Silahkan menggunakan parameter --username dan --password.' );
+	process.exit(1);
+}else{
+	useLogonCf = require( getConfigs() );
+	if ( useLogonCf == undefined ) {
+		process.exit(1);
+	};
+};
+
+args['pageo'] = args['pages'];
 
 if( args[ 'pages' ].match('kumpulbagi.com') || args[ 'pages' ].match('kumpulbagi.id') ){
 	var tmpurl  = args[ 'pages' ].split('/');
@@ -40,87 +95,134 @@ if( args[ 'pages' ].match('kumpulbagi.com') || args[ 'pages' ].match('kumpulbagi
 	args[ 'pages' ] = ( args[ 'pages' ].replace( 'list,'+args['start']+',' + args['end'], '' ) ) + '/list,'+args['start']+',' + args['end'];
 	args[ 'pages' ] = String( args[ 'pages' ] ).replace(/([^:]\/)\/+/g, "$1");
 	if ( !/^(?:f|ht)tps?\:\/\//.test( args[ 'pages' ] ) ) {
-        args[ 'pages' ] = "http://" + args[ 'pages' ];
-    };
+		args[ 'pages' ] = "http://" + args[ 'pages' ];
+	};
 };
 
-var result = [],
-	filesys = require('fs'),
-	request = require('request'),
-	envrmnt = require('jsdom').env,
-	urlpars = require( 'url' ),
-	hostnme = urlpars.parse( args['pages'] ).hostname,
-	protocl = urlpars.parse( args['pages'] ).protocol;
-
-console.info( 'Mengambil halaman dari ', hostnme );
-console.info( args[ 'pages' ] );
-var uniqURL = function ( a ) {
-    return a.sort().filter(function(item, pos, ary) {
-        return !pos || item != ary[pos - 1];
-    });
+var doCrawling = function(){
+	var result = [],
+		hostnme = urlpars.parse( args['pages'] ).hostname,
+		protocl = urlpars.parse( args['pages'] ).protocol;
+		
+	console.info( 'Mengambil halaman dari ', hostnme );
+	console.info( args[ 'pages' ] );
+	var uniqURL = function ( a ) {
+		return a.sort().filter(function(item, pos, ary) {
+			return !pos || item != ary[pos - 1];
+		});
+	};
+	var doDirect = function( index, temptk ){
+		if( index < temptk.length ){
+			var v = temptk[ index ];
+			console.info( protocl + '//' + hostnme + v['action'] );
+			request.post({
+				jar : jar,
+				url: protocl + '//' + hostnme + v['action'],
+				headers: {
+					'X-Requested-With'	: 'XMLHttpRequest',
+					'Content-Type'		: 'application/x-www-form-urlencoded'
+				},
+				form: {
+					fileId : v['fileid'],
+					__RequestVerificationToken : v['tokens']
+				}
+			}, function( err, httpResponse, body ){
+				if( err ){
+					console.error( 'gagal mengambil salah satu direct link', 'index ke ', index );
+				}else{
+					result.push( JSON.parse( body ) );
+					doDirect( ( index + 1 ), temptk );
+				};
+			});
+		}else{
+			if( temptk.length == result.length ){
+				filesys.writeFileSync( args['output'] + '.json', JSON.stringify( result ) );
+				
+				var directlink = [];
+				result.forEach(function( v ){
+					directlink.push( v['DownloadUrl'] );
+				});
+				directlink = uniqURL( directlink );
+				filesys.writeFileSync( args['output'] + '.txt', directlink.join('\n') );
+				console.log('Parsing selesai!')
+			}else{
+				console.log( 'Hasil direct link tidak sama dengan data yang sebelumnya, kemungkinan terjadi kegagalan ketika mengambil.' );
+			};
+		};
+	};
+	request.get( args['pages'], { jar : jar }, function ( error, response, body ) {
+		if (!error && response.statusCode == 200) {
+			envrmnt( body, function ( errors, window ) {
+				if( !errors ){
+					console.info( 'Mencoba melakukan parsing halaman..' )
+					var $ = require( 'jquery' )( window ),
+						temptk = [];
+					$('.list_row[data-file-id]').each(function(){
+						var action = $(this).find('form').attr('action'),
+							fileid = $(this).find('form').find('input[name="fileId"]').val(),
+							tokens = $(this).find('form').find('input[name="__RequestVerificationToken"]').val();
+						temptk.push({
+							action : action,
+							fileid : fileid,
+							tokens : tokens
+						});
+					});
+					console.info( 'Mencoba mengambil direct link' )
+					doDirect( 0, temptk );
+				}else{
+					console.error( 'Gagal melakukan parser #1' );
+				};
+		  });
+		}else{
+			console.error( 'Gagal melakukan parser #0' );
+		};
+	});
 };
-var doDirect = function( index, temptk ){
-	if( index < temptk.length ){
-		var v = temptk[ index ];
-		console.info( protocl + '//' + hostnme + v['action'] );
+
+var loginUser = function( UserName, Password ){
+	var uriLogin = 'http://kumpulbagi.id/action/Account/Login';
+	var doLoginUser = function( UserName, Password, __RequestVerificationToken, action ){
+		//jar.add( request.cookie( "__RequestVerificationToken=" + __RequestVerificationToken ) );
 		request.post({
-			url: protocl + '//' + hostnme + v['action'],
+			jar : jar,
+			url: uriLogin,
 			headers: {
-				'X-Requested-With': 'XMLHttpRequest',
-				'Content-Type': 'application/x-www-form-urlencoded'
+				'X-Requested-With'	: 'XMLHttpRequest',
+				'Content-Type'		: 'application/x-www-form-urlencoded'
 			},
 			form: {
-				fileId : v['fileid'],
-				__RequestVerificationToken : v['tokens']
+				UserName : UserName,
+				Password : Password,
+				__RequestVerificationToken : __RequestVerificationToken
 			}
 		}, function( err, httpResponse, body ){
 			if( err ){
-				console.error( 'gagal mengambil salah satu direct link', 'index ke ', index );
+				console.error( 'Gagal melakukan login #2' );
 			}else{
-				result.push( JSON.parse( body ) );
-				doDirect( ( index + 1 ), temptk );
+				doCrawling();
 			};
 		});
-	}else{
-		if( temptk.length == result.length ){
-			filesys.writeFileSync( args['output'] + '.json', JSON.stringify( result ) );
-			
-			var directlink = [];
-			result.forEach(function( v ){
-				directlink.push( v['DownloadUrl'] );
-			});
-			directlink = uniqURL( directlink );
-			filesys.writeFileSync( args['output'] + '.txt', directlink.join('\n') );
-			console.log('Parsing selesai!')
+	};
+	
+	request.get( uriLogin, { jar : jar }, function ( error, response, body ) {
+		if (!error && response.statusCode == 200) {
+			envrmnt( body, function ( errors, window ) {
+				if( !errors ){
+					console.info( 'Mencoba melakukan login..' )
+					var $ = require( 'jquery' )( window ),
+						action = $('#main').find('form').attr('action'),
+						tokens = $('#main').find('form').find('input[name="__RequestVerificationToken"]').val();
+					doLoginUser( UserName, Password, tokens, action );
+				}else{
+					console.error( 'Gagal melakukan login #1' );
+				};
+		  });
 		}else{
-			console.log( 'Hasil direct link tidak sama dengan data yang sebelumnya, kemungkinan terjadi kegagalan ketika mengambil.' );
+			console.error( 'Gagal melakukan login #0' );
 		};
-	};
+	});
 };
-request( args['pages'], function ( error, response, body ) {
-	if (!error && response.statusCode == 200) {
-		envrmnt( body, function ( errors, window ) {
-			if( !errors ){
-				console.info( 'Mencoba melakukan parsing halaman..' )
-				var $ = require( 'jquery' )( window ),
-					temptk = [];
-				$('.list_row[data-file-id]').each(function(){
-					var action = $(this).find('form').attr('action'),
-						fileid = $(this).find('form').find('input[name="fileId"]').val(),
-						tokens = $(this).find('form').find('input[name="__RequestVerificationToken"]').val();
-					temptk.push({
-						action : action,
-						fileid : fileid,
-						tokens : tokens
-					});
-				});
-				console.info( 'Mencoba mengambil direct link' )
-				doDirect( 0, temptk );
-			}else{
-				console.error( 'Gagal melakukan parser #1' );
-			};
-	  });
-	}else{
-		console.error( 'Gagal melakukan parser #0' );
-	};
-});
+
+console.info( 'Hallo @' + useLogonCf.UserName );
+console.info( 'Mencoba login dengan akun @' + useLogonCf.UserName );
+loginUser( useLogonCf.UserName, useLogonCf.Password );
