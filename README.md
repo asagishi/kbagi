@@ -1,4 +1,6 @@
-# Kumpul Bagi Parser
+# UNMAINTAINED
+
+### Kumpul Bagi Parser
 [![Kumpul Bagi](https://cloud.githubusercontent.com/assets/1286932/13162075/f688e40e-d6d4-11e5-886d-23fe9b5994a8.jpg)](http://kumpulbagi.id/) Direct Link Download untuk Setiap Halaman KumpulBagi. 
 
 [![Version npm](https://img.shields.io/npm/v/kumpulbagi-parser.svg?style=flat-square)](https://www.npmjs.com/package/kumpulbagi-parser)
