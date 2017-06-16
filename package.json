@@ -1,11 +1,11 @@
 {
-  "name": "kumpulbagi-parser",
+  "name": "kbagi-parser",
   "version": "1.0.3",
   "description": "Direct Link Download untuk Setiap Halaman KumpulBagi",
   "main": "./kumpulbagi-parser",
   "preferGlobal": true,
   "bin": {
-    "kumpulbagi-parser": "./kumpulbagi-parser"
+    "kumpulbagi-parser": "./kbagi-parser"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
