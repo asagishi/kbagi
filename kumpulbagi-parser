@@ -180,7 +180,7 @@ var doCrawling = function(){
 };
 
 var loginUser = function( UserName, Password ){
-	var uriLogin = 'http://kumpulbagi.id/action/Account/Login';
+	var uriLogin = 'http://kbagi.com/action/Account/Login';
 	var doLoginUser = function( UserName, Password, __RequestVerificationToken, action ){
 		//jar.add( request.cookie( "__RequestVerificationToken=" + __RequestVerificationToken ) );
 		request.post({
