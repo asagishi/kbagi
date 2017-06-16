@@ -85,7 +85,7 @@ if( !checkConfig() ) {
 
 args['pageo'] = args['pages'];
 
-if( args[ 'pages' ].match('kumpulbagi.com') || args[ 'pages' ].match('kumpulbagi.id') ){
+if( args[ 'pages' ].match('kbagi.com') || args[ 'pages' ].match('kumpulbagi.id') ){
 	var tmpurl  = args[ 'pages' ].split('/');
 	tmpurl.forEach(function( valu ){
 		if( valu.match( 'list,' ) || valu.match( 'gallery,' ) ){
